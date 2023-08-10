@@ -1,9 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <sqlite3.h>
+#include <string.h>
 
 int menu(int entre);
 void debuffer();
+void debufferTeller();
+int newAccount();
 
 int main(int argc, char const *argv[])
 {
@@ -34,9 +38,9 @@ int menu(int entre)
 {
     int choice, temp;
     char buffer = '@';
-    system("cls");                                                                                                  // Sur linux cela sera la commande clear
-    printf_s("\t\tSysteme de management bancaire\n\n\t\t░░░░░░░░░░ Bienvenue dans le menu principal ░░░░░░░░░░\n"); // En-tete
-    printf_s("1. Creer un nouveau compte\n2. Mettre a jour un nouveau compte\n3. Effectuer des transactions\n4. Verifier les details d'un compte existant\n5. Supprimer un compte existant\n6. Lister les clients de la banques\n7. Quitter l'application");
+    system("clear");                                                                                                  // Sur linux cela sera la commande clear
+    printf("\t\tSysteme de management bancaire\n\n\t\t░░░░░░░░░░ Bienvenue dans le menu principal ░░░░░░░░░░\n"); // En-tete
+    printf("1. Creer un nouveau compte\n2. Mettre a jour un nouveau compte\n3. Effectuer des transactions\n4. Verifier les details d'un compte existant\n5. Supprimer un compte existant\n6. Lister les clients de la banques\n7. Quitter l'application");
     
     /*
         Avec les problemes de buffer il faut vider notre buffer a chaque fois que l'on retourne 
@@ -45,12 +49,12 @@ int menu(int entre)
     */
     if (entre == 0)
     {
-        printf_s("\n\nAppuyer sur entrer pour commencer");
+        printf("\n\nAppuyer sur entrer pour commencer");
     }
 
     debuffer();
-    printf_s("\n\n\n\nEntrer votre choix : ");
-    scanf_s("%c", &buffer);
+    printf("\n\n\n\nEntrer votre choix : ");
+    scanf("%c", &buffer);
     debuffer();
 
     // Verification de choice pour eviter des bugs
@@ -59,8 +63,8 @@ int menu(int entre)
     if (!isdigit(buffer))
     {
         printf("Un numero a ete demande");
-        printf_s("\n\n\n\nEntrer votre choix : ");
-        scanf_s("%c", &buffer);
+        printf("\n\n\n\nEntrer votre choix : ");
+        scanf("%c", &buffer);
         debuffer();
     }
 
@@ -70,43 +74,43 @@ int menu(int entre)
     switch (choice)
     {
     case 1:
-        printf_s("Creation d'un nouveau comptre");
-        scanf_s("%d", &temp);
+        printf("Creation d'un nouveau comptre");
+        newAccount();
         break;
 
     case 2:
-        printf_s("Mise a jour d'un compte");
-        scanf_s("%d", &temp);
+        printf("Mise a jour d'un compte");
+        scanf("%d", &temp);
         break;
 
     case 3:
-        printf_s("Effectuer des transactions");
-        scanf_s("%d", &temp);
+        printf("Effectuer des transactions");
+        scanf("%d", &temp);
         break;
 
     case 4:
-        printf_s("Verifier les details d'un compte existant");
-        scanf_s("%d", &temp);
+        printf("Verifier les details d'un compte existant");
+        scanf("%d", &temp);
         break;
 
     case 5:
-        printf_s("Supprimer un compte existant");
-        scanf_s("%d", &temp);
+        printf("Supprimer un compte existant");
+        scanf("%d", &temp);
         break;
 
     case 6:
-        printf_s("Lister les clients de la banques");
-        scanf_s("%d", &temp);
+        printf("Lister les clients de la banques");
+        scanf("%d", &temp);
         break;
 
     case 7:
-        printf_s("Quitter");
+        printf("Quitter");
         exit(0);
         break;
 
     default:
         // Bien joue mon hackeur cadeau nutella
-        printf_s("Mauvais choix de numero");
+        printf("Mauvais choix de numero");
         exit(-1);
         break;
     }
@@ -116,4 +120,119 @@ int menu(int entre)
 
 void debuffer(){
     while (getchar() != '\n');
+}
+
+void debufferTeller(){
+    printf("Appuyer sur entree pour continuer\n");
+    debuffer();
+}
+
+/*
+    Fonction pour creer un nouveau compte on va se connecter a notre base de donnees qui contient
+    deja nos tables deja parametrer, donc cette fonction va seulement permttre d'ajouter des entree dans
+    la table utilisateurs
+*/
+
+int newAccount() {
+    system("clear");
+    sqlite3 *db;
+    int rc = sqlite3_open("bank.db", &db);
+
+    if (rc != SQLITE_OK)
+    {
+        fprintf(stderr, "Impossible d'ouvrir la base de données : %s\n", sqlite3_errmsg(db));
+        return 1;
+    }
+
+    //Definition des variables du compte
+    int  numero, solde, choixAcc = 0;
+    char nom[64] = "";
+    char prenom[64] = "";
+    char dateBirth[32] = "";
+    char typeAcc[32] = "";
+    char nationalite[32] = "";
+
+    //Insertion des valeurs dans les variables
+    printf("\n\t\t░░░░░░░░░░ Creation d'un nouveau compte ░░░░░░░░░░\n");
+    printf("Veuillez remplir les champs suivants avec vos informations personnelles\n\n");
+    printf("Quels est le type de compte : \n1- Compte Courant\n2- Compte Epargne\n3- Compte bloque 1 an\n4- Compte bloque 2 ans\n5- Compte bloquer 3 ans\n\t\tUn choix errone entraine la creation d'un compte courant\n");
+    scanf("%d",&choixAcc);
+    switch (choixAcc)
+    {
+    case 1:
+        strcpy(typeAcc, "Courant");
+        break;
+
+    case 2:
+        strcpy(typeAcc, "Epargne");
+        break;
+
+    case 3:
+        strcpy(typeAcc, "Bloque1");
+        break;
+
+    case 4:
+        strcpy(typeAcc, "Bloque2");
+        break;
+
+    case 5:
+        strcpy(typeAcc, "Bloque3");
+        break;
+
+    default:
+        strcpy(typeAcc, "Compte Courant");
+        break;
+    }
+
+    debufferTeller();
+
+    printf("\nVotre nom : ");
+    scanf("%s",nom);
+
+    debufferTeller();
+
+    printf("\nVotre prenom : ");
+    scanf("%s",prenom);
+
+    debufferTeller();
+
+    printf("\nVotre date de naissance : ");
+    scanf("%s",dateBirth);
+
+    debufferTeller();
+
+    printf("\nVotre numero de telephone : ");
+    scanf("%d", &numero);
+
+    debufferTeller();
+
+    printf("\nVotre date nationnalite : ");
+    scanf("%s", nationalite);
+
+    debufferTeller();
+
+    printf("\nCombien deposez vous pour votre premier depots : ");
+    scanf("%d", &solde);
+
+    debufferTeller();
+
+    //Maintenant on passe a l'ecriture dans la base de donnees
+    char sql[2000];
+    snprintf(sql, sizeof(sql), "INSERT INTO users (Nom, Prenom, DateNaissance, Nationalite, NumeroTelephone, Solde, Type) VALUES ('%s', '%s', '%s', '%s', '%d', '%d', '%s');", nom, prenom,dateBirth,nationalite,numero,solde,typeAcc);
+
+    rc = sqlite3_exec(db, sql, 0, 0, 0);
+
+    if (rc != SQLITE_OK)
+    {
+        fprintf(stderr, "Erreur lors de l'insertion des données : %s\n", sqlite3_errmsg(db));
+    }
+    else
+    {
+        printf("Données insérées avec succès.\n");
+    }
+
+    sqlite3_close(db);
+
+    return 0;
+
 }
