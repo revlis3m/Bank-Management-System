@@ -3,10 +3,9 @@
 #include <ctype.h>
 #include <sqlite3.h>
 #include <string.h>
+#include "utilitaire.h"
 
 int menu(int entre);
-void debuffer();
-void debufferTeller();
 int newAccount();
 
 int main(int argc, char const *argv[])
@@ -118,14 +117,6 @@ int menu(int entre)
     return temp;
 }
 
-void debuffer(){
-    while (getchar() != '\n');
-}
-
-void debufferTeller(){
-    printf("Appuyer sur entree pour continuer\n");
-    debuffer();
-}
 
 /*
     Fonction pour creer un nouveau compte on va se connecter a notre base de donnees qui contient
@@ -148,74 +139,97 @@ int newAccount() {
     int  numero, solde, choixAcc = 0;
     char nom[64] = "";
     char prenom[64] = "";
-    char dateBirth[32] = "";
     char typeAcc[32] = "";
+    char dateBirth[32] = "";
     char nationalite[32] = "";
-
-    //Insertion des valeurs dans les variables
+    char numerotemp[32] = "";
+    char soldetemp[32] = "";
+ 
+    //Insertion des valeurs dans les variables cela va etre une boucle s'il y a une erreur on recommence
     printf("\n\t\t░░░░░░░░░░ Creation d'un nouveau compte ░░░░░░░░░░\n");
-    printf("Veuillez remplir les champs suivants avec vos informations personnelles\n\n");
-    printf("Quels est le type de compte : \n1- Compte Courant\n2- Compte Epargne\n3- Compte bloque 1 an\n4- Compte bloque 2 ans\n5- Compte bloquer 3 ans\n\t\tUn choix errone entraine la creation d'un compte courant\n");
-    scanf("%d",&choixAcc);
-    switch (choixAcc)
-    {
-    case 1:
-        strcpy(typeAcc, "Courant");
-        break;
+    printf("Veuillez remplir les champs suivants avec vos informations personnelles (si vous avez fait une erreur vous pouvez recommencez a la fin du formulaire)\n\n");
 
-    case 2:
-        strcpy(typeAcc, "Epargne");
-        break;
+    //Debut boucle informations
+    int valide = 0;
+    while (valide == 0){
+        printf("Quels est le type de compte : \n1- Compte Courant\n2- Compte Epargne\n3- Compte bloque 1 an\n4- Compte bloque 2 ans\n5- Compte bloquer 3 ans\n\t\tUn choix errone entraine la creation d'un compte courant\n");
+        scanf("%d", &choixAcc);
+        switch (choixAcc)
+        {
+        case 1:
+            strcpy(typeAcc, "Courant");
+            break;
 
-    case 3:
-        strcpy(typeAcc, "Bloque1");
-        break;
+        case 2:
+            strcpy(typeAcc, "Epargne");
+            break;
 
-    case 4:
-        strcpy(typeAcc, "Bloque2");
-        break;
+        case 3:
+            strcpy(typeAcc, "Bloque1");
+            break;
 
-    case 5:
-        strcpy(typeAcc, "Bloque3");
-        break;
+        case 4:
+            strcpy(typeAcc, "Bloque2");
+            break;
 
-    default:
-        strcpy(typeAcc, "Compte Courant");
-        break;
+        case 5:
+            strcpy(typeAcc, "Bloque3");
+            break;
+
+        default:
+            strcpy(typeAcc, "Compte Courant");
+            break;
+        }
+
+        debufferTeller();
+
+        printf("\nVotre nom : ");
+        scanf("%s", nom);
+
+        debufferTeller();
+
+        printf("\nVotre prenom : ");
+        scanf("%s", prenom);
+
+        debufferTeller();
+
+        printf("\nVotre date de naissance (DD-MM-YYYY) ");
+        char *dateBirthh = dateBIrth();
+
+        debufferTeller();
+
+        char contexte[64] = "numero de telephone";
+        numero = verifNumero(numerotemp, contexte);
+
+        debufferTeller();
+
+        printf("\nVotre date nationnalite : ");
+        scanf("%s", nationalite);
+
+        debufferTeller();
+
+        strcpy(contexte, "solde du compte");
+        solde = verifNumero(soldetemp, contexte);
+
+        debufferTeller();
+
+        printf("\n\n\t\t░░░░░░░░░░ Recapaputilatif de vos informations personnelle░░░░░░░░░░\n");
+        printf("Nom\t : %s\nPrenom\t: %s\nDate de Naissance\t: %s\nNumero\t: %d\nNationnalite\t: %s\n\n",nom,prenom,dateBirthh,numero,nationalite);
+        printf("Type\t: %s\nSolde\t:%d",typeAcc,solde);
+        printf("\nValidez vous vos informations ?(Y/N)");
+        char validation;
+        scanf("%c",&validation);
+        if(validation != 'Y'){
+            system("clear");
+            continue;
+        }
+        else
+        {
+            strcpy(dateBirth,dateBirthh);
+            valide = 1;
+        }
     }
-
-    debufferTeller();
-
-    printf("\nVotre nom : ");
-    scanf("%s",nom);
-
-    debufferTeller();
-
-    printf("\nVotre prenom : ");
-    scanf("%s",prenom);
-
-    debufferTeller();
-
-    printf("\nVotre date de naissance : ");
-    scanf("%s",dateBirth);
-
-    debufferTeller();
-
-    printf("\nVotre numero de telephone : ");
-    scanf("%d", &numero);
-
-    debufferTeller();
-
-    printf("\nVotre date nationnalite : ");
-    scanf("%s", nationalite);
-
-    debufferTeller();
-
-    printf("\nCombien deposez vous pour votre premier depots : ");
-    scanf("%d", &solde);
-
-    debufferTeller();
-
+    
     //Maintenant on passe a l'ecriture dans la base de donnees
     char sql[2000];
     snprintf(sql, sizeof(sql), "INSERT INTO users (Nom, Prenom, DateNaissance, Nationalite, NumeroTelephone, Solde, Type) VALUES ('%s', '%s', '%s', '%s', '%d', '%d', '%s');", nom, prenom,dateBirth,nationalite,numero,solde,typeAcc);
