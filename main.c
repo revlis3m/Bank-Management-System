@@ -11,6 +11,10 @@ int newAccount();
 int updateAccount();
 int verifAcc();
 int listAcc();
+int eraseAcc();
+int transac();
+int depot(int idAcc, int rc, sqlite3 *db);
+int retrait(int idAcc, int rc, sqlite3 *db);
 
 static int callback(void *data, int argc, char **argv, char **azColName)
 {
@@ -26,6 +30,13 @@ static int callbackCheck(void *flag, int argc, char **argv, char **azColName)
 {
     int *callback_flag = (int *)flag;
     *callback_flag = 1; // Mettre le flag à 1 si un résultat est trouvé
+    return 0;
+}
+
+static int callbackForBalance(void *data, int argc, char **argv, char **azColName)
+{
+    int *currentBalance = (int *)data;
+    *currentBalance = atoi(argv[0]);
     return 0;
 }
 
@@ -102,8 +113,7 @@ int menu(int entre)
         break;
 
     case 3:
-        printf("Effectuer des transactions");
-        scanf("%d", &temp);
+        transac();
         break;
 
     case 4:
@@ -111,8 +121,7 @@ int menu(int entre)
         break;
 
     case 5:
-        printf("Supprimer un compte existant");
-        scanf("%d", &temp);
+        eraseAcc();
         break;
 
     case 6:
@@ -470,4 +479,210 @@ int listAcc()
     } while (sortie != 'Y');
 
     return 0;
+}
+
+/*
+    Maintenant la derniere fonction pour la gestion des utilisateurs est la fonction erase qui va permettre
+    de supprimer un compte a l'aide de son id
+*/
+
+int eraseAcc()
+{
+    system("clear");
+    // Jolie petit affichage
+    printf("\t\t\t░░░░░░░░░░ Suppression d'un compte ░░░░░░░░░░\n\n\n");
+    sqlite3 *db;
+    int rc = sqlite3_open("bank.db", &db);
+
+    if (rc != SQLITE_OK)
+    {
+        fprintf(stderr, "Impossible d'ouvrir la base de données : %s\n", sqlite3_errmsg(db));
+        sleep(3);
+        return 1;
+    }
+
+    int idAcc;
+    char idAcc_verif[32] = "";
+    idAcc = verifNumero(idAcc_verif, "ID du compte");
+
+    int callback_flag = 0;
+    char verifID[200];
+
+    snprintf(verifID, sizeof(verifID), "SELECT ID FROM users WHERE ID = %d;", idAcc);
+
+    rc = sqlite3_exec(db, verifID, callbackCheck, &callback_flag, 0);
+
+    if (rc != SQLITE_OK)
+    {
+        fprintf(stderr, "Erreur lors de la vérification de l'ID : %s\n", sqlite3_errmsg(db));
+        sleep(3);
+    }
+    else
+    {
+        if (callback_flag)
+        {
+            printf("L'ID existe dans la base de données.\n");
+            char readsql[200];
+            snprintf(readsql, sizeof(readsql), "DELETE FROM users WHERE ID = %d", idAcc);
+
+            rc = sqlite3_exec(db, readsql, callback, 0, 0);
+
+            if (rc != SQLITE_OK)
+            {
+                fprintf(stderr, "Erreur lors de la sélection : %s\n", sqlite3_errmsg(db));
+                sleep(3);
+            }
+
+            sqlite3_close(db);
+            char sortie = 'N';
+            do
+            {
+                printf("Voulez vous sortir (Y/N)\n");
+                scanf("%c", &sortie);
+                sleep(3);
+            } while (sortie != 'Y');
+        }
+        else
+        {
+            printf("L'ID n'existe pas dans la base de données.\n");
+            sleep(3);
+            sqlite3_close(db);
+            return -1;
+        }
+    }
+
+    sqlite3_close(db);
+}
+
+/*
+    Au tour des transactions enfin bon ici ce que l'on va faire c'est qu'apres le choix on va demander si
+    on veut faire un retrait ou un depot
+     Depot on verifie juste l'id du compte si valide on augment la valeur du compte
+     Retrait on verifie aussi l'id du compte puis on va verifier si la valeur du solde permet un retrait
+*/
+
+int transac()
+{
+    system("clear");
+    // Jolie petit affichage
+    printf("\t\t\t░░░░░░░░░░ $$$ Transaction $$$ ░░░░░░░░░░\n\n\n");
+    sqlite3 *db;
+    int rc = sqlite3_open("bank.db", &db);
+
+    if (rc != SQLITE_OK)
+    {
+        fprintf(stderr, "Impossible d'ouvrir la base de données : %s\n", sqlite3_errmsg(db));
+        sleep(3);
+        return 1;
+    }
+
+    int idAcc;
+    char idAcc_verif[32] = "";
+    idAcc = verifNumero(idAcc_verif, "ID du compte");
+
+    int callback_flag = 0;
+    char verifID[200];
+
+    snprintf(verifID, sizeof(verifID), "SELECT ID FROM users WHERE ID = %d;", idAcc);
+
+    rc = sqlite3_exec(db, verifID, callbackCheck, &callback_flag, 0);
+
+    if (rc != SQLITE_OK)
+    {
+        fprintf(stderr, "Erreur lors de la vérification de l'ID : %s\n", sqlite3_errmsg(db));
+        sleep(3);
+    }
+    else
+    {
+        if (callback_flag)
+        {
+            printf("L'ID existe dans la base de données.\n");
+            int choix;
+            char *choixTemp;
+            choix = verifNumero(choixTemp, "Veuillez choisir votre action: \n1- Depot\n2- Retrait\nVotre chiffre");
+            switch (choix)
+            {
+            case 1:
+                depot(idAcc,rc,db);
+                break;
+
+            case 2:
+                retrait(idAcc,rc,db);
+                break;
+
+            default:
+                break;
+            }
+
+        }
+        else
+        {
+            printf("L'ID n'existe pas dans la base de données.\n");
+            sleep(3);
+            sqlite3_close(db);
+            return -1;
+        }
+    }
+
+    sqlite3_close(db);
+}
+
+int depot(int idAcc, int rc, sqlite3* db)
+{
+    int somme;
+    char *sommeTemp;
+    somme = verifNumero(sommeTemp,"\n\nQuel somme voulais vous deposer ?");
+    char update[200];
+    snprintf(update,sizeof(update),"UPDATE users SET Solde = Solde + %d WHERE ID = %d",somme,idAcc);
+    rc = sqlite3_exec(db,update,0,0,0);
+    if (rc != SQLITE_OK)
+    {
+        fprintf(stderr, "Erreur lors de la mise à jour du solde : %s\n", sqlite3_errmsg(db));
+        sleep(3);
+        return -1;
+    }
+    else
+    {
+        printf("Solde mis à jour avec succès.\n");
+        sleep(3);
+        return 0;
+    }
+}
+
+int retrait(int idAcc, int rc, sqlite3 *db)
+{
+    // Requête SQL pour obtenir le solde actuel
+    char selectQuery[100];
+    snprintf(selectQuery, sizeof(selectQuery), "SELECT Solde FROM nom_de_votre_table WHERE ID = %d;", idAcc);
+
+    int currentBalance = 0; // Solde actuel
+    rc = sqlite3_exec(db, selectQuery, callbackForBalance, &currentBalance, 0);
+    
+    //Maintenant qu'on a le solde on peut demander les retraits et faire la comparaison
+    int somme;
+    char *sommeTemp;
+    somme = verifNumero(sommeTemp, "\n\nQuel somme voulais vous retirer ?");
+    if(somme >= currentBalance)
+    {
+        char update[200];
+        snprintf(update, sizeof(update), "UPDATE users SET Solde = Solde - %d WHERE ID = %d", somme, idAcc);
+        rc = sqlite3_exec(db, update, 0, 0, 0);
+        if (rc != SQLITE_OK)
+        {
+            fprintf(stderr, "Erreur lors de la mise à jour du solde : %s\n", sqlite3_errmsg(db));
+            sleep(3);
+            return -1;
+        }
+        else
+        {
+            printf("Solde mis à jour avec succès.\n");
+            sleep(3);
+            return 0;
+        }
+    }
+    else
+    {
+        printf("Solde insufisant");
+        return -1;
+    }
 }
