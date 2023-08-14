@@ -3,12 +3,31 @@
 #include <ctype.h>
 #include <sqlite3.h>
 #include <string.h>
+#include <unistd.h>
 #include "utilitaire.h"
 
 int menu(int entre);
 int newAccount();
+int updateAccount();
 
-int main(int argc, char const *argv[])
+static int callback(void *data, int argc, char **argv, char **azColName)
+{
+    for (int i = 0; i < argc; i++)
+    {
+        printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
+    }
+    printf("\n");
+    return 0;
+}
+
+static int callbackCheck(void *flag, int argc, char **argv, char **azColName)
+{
+    int *callback_flag = (int *)flag;
+    *callback_flag = 1; // Mettre le flag à 1 si un résultat est trouvé
+    return 0;
+}
+
+    int main(int argc, char const *argv[])
 {
     int entre = 0;
     while (1)
@@ -73,13 +92,11 @@ int menu(int entre)
     switch (choice)
     {
     case 1:
-        printf("Creation d'un nouveau comptre");
         newAccount();
         break;
 
     case 2:
-        printf("Mise a jour d'un compte");
-        scanf("%d", &temp);
+        updateAccount();
         break;
 
     case 3:
@@ -104,6 +121,7 @@ int menu(int entre)
 
     case 7:
         printf("Quitter");
+        system("clear");
         exit(0);
         break;
 
@@ -245,8 +263,101 @@ int newAccount() {
         printf("Données insérées avec succès.\n");
     }
 
+    //On donne a l'utilisateur son id
+    printf("Voici votre identifiant : ");
+    char readsql[2000];
+    snprintf(readsql, sizeof(readsql), "SELECT id FROM users WHERE Nom = '%s' AND Prenom = '%s';",nom,prenom);
+    rc = sqlite3_exec(db, readsql, callback, 0, 0);
+
+    if (rc != SQLITE_OK)
+    {
+        fprintf(stderr, "Erreur lors de la lecture des données : %s\n", sqlite3_errmsg(db));
+    }
+
+    sleep(3);
+
     sqlite3_close(db);
 
     return 0;
 
 }
+
+/*
+    La fonction update account va permettre de changer les informations qui sont succeptible d'etre changer
+    pour rappel un compte est composer de Nom, Prenom, DateNaissance,Nationalite,NumeroTelephone*,Solde*,Type
+    Dans cette les variable qui peuvent changer ont une apostrophe pour le solde les changement vont se faire
+    avec les transaction du coup cette fonction va permettre de changer le numero de telephone
+    Pour se faire on va demander l'id du client on va d'abord verifier si le client exite si c'est le cas on
+    lui demande son nouveau numero on verifie que c'est bien un numero et on le change
+*/
+
+int updateAccount()
+{
+    system("clear");
+    sqlite3 *db;
+    int rc = sqlite3_open("bank.db", &db);
+
+    if (rc != SQLITE_OK)
+    {
+        fprintf(stderr, "Impossible d'ouvrir la base de données : %s\n", sqlite3_errmsg(db));
+        sleep(3);
+        return 1;
+    }
+
+    // Dialogue pour verifier l'existance du client
+    int idAcc;
+    char idAcc_verif[32] = "";
+    idAcc = verifNumero(idAcc_verif,"ID du compte");
+
+    int callback_flag = 0;
+    char verifID[200];
+
+    snprintf(verifID, sizeof(verifID), "SELECT ID FROM users WHERE ID = %d;", idAcc);
+
+    rc = sqlite3_exec(db,verifID,callbackCheck,&callback_flag,0);
+
+    if (rc != SQLITE_OK)
+    {
+        fprintf(stderr, "Erreur lors de la vérification de l'ID : %s\n", sqlite3_errmsg(db));
+        sleep(3);
+    }
+    else
+    {
+        if (callback_flag)
+        {
+            printf("L'ID existe dans la base de données.\n");
+            char updateID[200];
+            int numero;
+            char numeroTemp[32] = "";
+            char contexte[64] = "numero de telephone";
+            numero = verifNumero(numeroTemp, contexte);
+
+            snprintf(updateID, sizeof(updateID), "UPDATE users SET NumeroTelephone = '%d' WHERE ID = '%d'",numero, idAcc);
+            rc = sqlite3_exec(db,updateID,0,0,0);
+
+            if (rc != SQLITE_OK)
+            {
+                fprintf(stderr, "Erreur lors de la mise à jour du numéro de téléphone : %s\n", sqlite3_errmsg(db));
+                sleep(3);
+            }
+            else
+            {
+                printf("Numéro de téléphone mis à jour avec succès.\n");
+                sleep(3);
+            }
+            sqlite3_close(db);
+        }
+        else
+        {
+            printf("L'ID n'existe pas dans la base de données.\n");
+            sleep(3);
+            sqlite3_close(db);
+            return -1;
+        }
+    }
+
+    sqlite3_close(db);
+
+    return 0;
+}
+
