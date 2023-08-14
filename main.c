@@ -9,6 +9,7 @@
 int menu(int entre);
 int newAccount();
 int updateAccount();
+int verifAcc();
 
 static int callback(void *data, int argc, char **argv, char **azColName)
 {
@@ -27,7 +28,7 @@ static int callbackCheck(void *flag, int argc, char **argv, char **azColName)
     return 0;
 }
 
-    int main(int argc, char const *argv[])
+int main(int argc, char const *argv[])
 {
     int entre = 0;
     while (1)
@@ -105,8 +106,7 @@ int menu(int entre)
         break;
 
     case 4:
-        printf("Verifier les details d'un compte existant");
-        scanf("%d", &temp);
+        verifAcc();
         break;
 
     case 5:
@@ -361,3 +361,73 @@ int updateAccount()
     return 0;
 }
 
+/*
+    Cette fonction permet de voir tous les details d'un compte
+*/
+
+int verifAcc()
+{
+    system("clear");
+    sqlite3 *db;
+    int rc = sqlite3_open("bank.db", &db);
+
+    if (rc != SQLITE_OK)
+    {
+        fprintf(stderr, "Impossible d'ouvrir la base de données : %s\n", sqlite3_errmsg(db));
+        sleep(3);
+        return 1;
+    }
+
+    int idAcc;
+    char idAcc_verif[32] = "";
+    idAcc = verifNumero(idAcc_verif, "ID du compte");
+
+    int callback_flag = 0;
+    char verifID[200];
+
+    snprintf(verifID, sizeof(verifID), "SELECT ID FROM users WHERE ID = %d;", idAcc);
+
+    rc = sqlite3_exec(db, verifID, callbackCheck, &callback_flag, 0);
+
+    if (rc != SQLITE_OK)
+    {
+        fprintf(stderr, "Erreur lors de la vérification de l'ID : %s\n", sqlite3_errmsg(db));
+        sleep(3);
+    }
+    else
+    {
+        if (callback_flag)
+        {
+            printf("L'ID existe dans la base de données.\n");
+            char readsql[200];
+            snprintf(readsql,sizeof(readsql), "SELECT * FROM users WHERE ID = %d", idAcc);
+
+            rc = sqlite3_exec(db,readsql, callback,0,0);
+
+            if (rc != SQLITE_OK)
+            {
+                fprintf(stderr, "Erreur lors de la sélection : %s\n", sqlite3_errmsg(db));
+                sleep(3);
+            }
+
+            sqlite3_close(db);
+            char sortie = 'N';
+            do
+            {
+                printf("Voulez vous sortir (Y/N)\n");
+                scanf("%c",&sortie);
+                sleep(3);
+            } while (sortie != 'Y');
+            
+        }
+        else
+        {
+            printf("L'ID n'existe pas dans la base de données.\n");
+            sleep(3);
+            sqlite3_close(db);
+            return -1;
+        }
+    }
+
+    sqlite3_close(db);
+}

@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <sqlite3.h>
 #include <string.h>
+#include <unistd.h>
 #include "utilitaire.h"
 
 void debuffer()
@@ -109,5 +111,3 @@ char* dateBIrth ()
 
     return dateBirth;
 }
-
-
