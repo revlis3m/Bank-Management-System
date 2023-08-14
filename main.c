@@ -10,6 +10,7 @@ int menu(int entre);
 int newAccount();
 int updateAccount();
 int verifAcc();
+int listAcc();
 
 static int callback(void *data, int argc, char **argv, char **azColName)
 {
@@ -115,12 +116,10 @@ int menu(int entre)
         break;
 
     case 6:
-        printf("Lister les clients de la banques");
-        scanf("%d", &temp);
+        listAcc();
         break;
 
     case 7:
-        printf("Quitter");
         system("clear");
         exit(0);
         break;
@@ -430,4 +429,45 @@ int verifAcc()
     }
 
     sqlite3_close(db);
+}
+
+int listAcc()
+{
+    system("clear");
+    //Jolie petit affichage
+    printf("\t\t\t░░░░░░░░░░ Liste des clients de la banque ░░░░░░░░░░\n\n\n");
+
+    sqlite3 *db;
+    int rc;
+
+    // Ouvrir la base de données
+    rc = sqlite3_open("bank.db", &db);
+    if (rc)
+    {
+        fprintf(stderr, "Erreur lors de l'ouverture de la base de données : %s\n", sqlite3_errmsg(db));
+        sleep(3);
+        return 1;
+    }
+
+    // Requête SQL pour sélectionner toutes les colonnes de toutes les lignes
+    const char *selectQuery = "SELECT Nom,Prenom,Nationalite FROM users;";
+
+    rc = sqlite3_exec(db, selectQuery, callback, 0, 0);
+    if (rc != SQLITE_OK)
+    {
+        fprintf(stderr, "Erreur lors de la sélection : %s\n", sqlite3_errmsg(db));
+    }
+
+    // Fermer la base de données
+    sqlite3_close(db);
+
+    char sortie;
+    debufferTeller();
+    do
+    {
+        printf("Voulez vous sortir (Y/N)\n");
+        scanf("%c", &sortie);
+    } while (sortie != 'Y');
+
+    return 0;
 }
